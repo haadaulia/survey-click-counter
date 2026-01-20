@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  // URL validation
+  // basic URL validation
   let parsed: URL;
   try {
     parsed = new URL(formUrl);
@@ -73,4 +74,21 @@ export async function POST(req: NextRequest) {
     },
     { status: 201 }
   );
+}
+
+export async function DELETE(req: NextRequest) {
+
+  const slug = req.nextUrl.searchParams.get("slug");
+
+  if (!slug) {
+    return NextResponse.json({ error: "Missing slug" }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin.from("forms").delete().eq("slug", slug);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true }, { status: 200 });
 }

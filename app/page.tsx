@@ -77,9 +77,20 @@ export default function Home() {
     }
   };
 
-  const handleDelete = (index: number) => {
-    setForms((prev) => prev.filter((_, i) => i !== index));
-  };
+  const handleDelete = async (slug: string) => {
+  const res = await fetch(`/api/forms?slug=${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    console.error("Failed to delete form");
+    return;
+  }
+
+  setForms((prev) => prev.filter((f) => f.id !== slug));
+};
+
+
 
   return (
     <main className="min-h-screen flex items-start justify-center bg-white px-4 py-8">
@@ -195,7 +206,7 @@ export default function Home() {
                       </td>
                       <td className="border border-[#B9B9B9] px-2 sm:px-3 py-2 align-top text-center">
                         <button
-                          onClick={() => handleDelete(i)}
+                          onClick={() => handleDelete(form.id)}
                           className="text-2xl leading-none font-semibold text-red-600 hover:text-red-800 cursor-pointer"
                           aria-label="Delete form"
                         >
