@@ -7,17 +7,24 @@ function isNonEmptyRow(row: unknown): row is unknown[] {
   return Array.isArray(row) && row.some(cell => String(cell).trim() !== "");
 }
 
+// Normalize form names for matching
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\.xlsx$/i, "")
+    .replace(/\(\d+[-\s]?\d*\)$/i, "") // remove (1), (1-1), (1 1)
+    .replace(/[-_]/g, " ")             // hyphens/underscores → space
+    .replace(/\s+/g, " ")              // collapse multiple spaces
+    .trim();
+}
+
 // Extract form name from filename first, fallback to sheet name
 function extractFormName(file: File, workbook: XLSX.WorkBook): string {
-  let formName = file.name
-    .replace(/\.xlsx$/i, "")               // remove extension
-    .replace(/\(\d+[-\s]?\d*\)$/i, "")    // remove trailing (1), (1 1), (1-1)
-    .replace(/[-_]/g, " ")                 // replace hyphens/underscores with space
-    .trim();
+  let formName = normalizeName(file.name);
 
-  // Fallback to sheet name if filename is empty or generic
-  if (!formName || formName.toLowerCase() === "sheet1") {
-    formName = workbook.SheetNames[0]?.replace("Sheet", "").trim() || "Default Form";
+  // Fallback to sheet name
+  if (!formName || formName === "sheet1") {
+    formName = normalizeName(workbook.SheetNames[0] || "Default Form");
   }
 
   return formName;
@@ -47,25 +54,26 @@ export async function POST(req: NextRequest) {
     }
 
     const formName = extractFormName(file, workbook);
-    console.log("Extracted form name:", formName);
+    console.log("Normalized form name:", formName);
 
-    // 1️⃣ Try exact match first
-    let { data: targetForms, error } = await supabaseAdmin
+    // Fetch all forms from DB
+    const { data: allForms, error } = await supabaseAdmin
       .from("forms")
-      .select("slug, name")
-      .eq("name", formName)
-      .limit(1);
+      .select("slug, name, submissions"); // get previous submission count too
 
-    // 2️⃣ Fallback to fuzzy match
-    if (!targetForms?.[0]) {
-      ({ data: targetForms, error } = await supabaseAdmin
-        .from("forms")
-        .select("slug, name")
-        .ilike("name", `%${formName}%`)
-        .limit(1));
+    if (error || !allForms || allForms.length === 0) {
+      return NextResponse.json({ error: "No forms found in DB" }, { status: 500 });
     }
 
-    if (error || !targetForms?.[0]) {
+    // Match normalized name
+    let matchedForm = allForms.find(f => normalizeName(f.name) === formName);
+
+    // Fallback: partial match if exact fails
+    if (!matchedForm) {
+      matchedForm = allForms.find(f => normalizeName(f.name).includes(formName));
+    }
+
+    if (!matchedForm) {
       return NextResponse.json(
         {
           error: `No form found matching "${formName}"`,
@@ -76,8 +84,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const targetSlug = targetForms[0].slug;
-    const matchedFormName = targetForms[0].name;
+    const targetSlug = matchedForm.slug;
+    const matchedFormName = matchedForm.name;
+    const previousSubmissions = matchedForm.submissions || 0;
+
+    // Safety check: warn if new count differs by more than 50%
+    const difference = Math.abs(totalSubmissions - previousSubmissions);
+    const threshold = 0.5 * previousSubmissions; // 50% difference
+
+    if (previousSubmissions > 0 && difference > threshold) {
+      return NextResponse.json(
+        {
+          error: `Suspicious submission count change detected`,
+          message: `Previous: ${previousSubmissions}, New: ${totalSubmissions}`,
+          detected: formName,
+          matched: matchedFormName,
+        },
+        { status: 400 }
+      );
+    }
 
     // Overwrite submissions count (Excel is source of truth)
     const { error: updateError } = await supabaseAdmin
@@ -95,8 +120,8 @@ export async function POST(req: NextRequest) {
       detected: formName,
       matched: matchedFormName,
       totalSubmissions,
+      previousSubmissions,
       slug: targetSlug,
-      // Optional: preview first 5 rows
       rowsPreview: dataRows.slice(0, 5),
     });
   } catch (error: any) {
