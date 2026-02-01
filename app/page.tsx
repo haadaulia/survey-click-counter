@@ -12,6 +12,33 @@ type Form = {
   conversion: string;
 };
 
+const MetricCard = ({
+  title,
+  value,
+  color = 'blue'
+}: {
+  title: string;
+  value: string | number;
+  color?: 'blue' | 'green' | 'purple';
+}) => {
+  const colors = {
+    blue: 'from-blue-500 to-indigo-600',
+    green: 'from-emerald-500 to-teal-600', 
+    purple: 'from-purple-500 to-violet-600'
+  };
+
+  return (
+    <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 group hover:shadow-3xl transition-all duration-500 hover:-translate-y-2">
+      <p className="text-sm font-medium text-gray-600 mb-2 opacity-90">{title}</p>
+      <p className="text-4xl font-black bg-gradient-to-r from-gray-900 to-black bg-clip-text text-transparent mb-1">
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </p>
+      <div className={`w-full h-2 bg-gradient-to-r ${colors[color as keyof typeof colors]} rounded-full shadow-lg group-hover:scale-[1.02] transition-transform duration-300`} />
+    </div>
+  );
+};
+
+
 export default function Home() {
   const [formName, setFormName] = useState("");
   const [formLink, setFormLink] = useState("");
@@ -22,6 +49,8 @@ export default function Home() {
 
   useEffect(() => {
     loadForms();
+      const interval = setInterval(loadForms, 30000); // Refresh every 30s
+      return () => clearInterval(interval);
   }, []);
 
   const loadForms = async (): Promise<void> => {
@@ -196,6 +225,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 px-4 py-8 sm:py-12">
       <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-6">
+        
         {/* Header */}
         <div className="text-center mb-12 sm:mb-16">
           <div className="inline-flex items-center gap-3 bg-white/90 backdrop-blur-xl px-6 py-4 sm:py-3 rounded-3xl shadow-2xl border border-white/60 mb-6">
@@ -209,9 +239,43 @@ export default function Home() {
           </p>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-4xl mx-auto">
+  <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 text-center group hover:shadow-3xl hover:-translate-y-2 transition-all duration-500">
+    <p className="text-sm font-medium text-gray-600 mb-3">Total Clicks</p>
+    <p className="text-4xl font-black text-gray-900 mb-4">
+      {forms.reduce((a, f) => a + f.clicks, 0).toLocaleString()}
+    </p>
+    <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mx-auto w-24" />
+  </div>
+  
+  <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 text-center group hover:shadow-3xl hover:-translate-y-2 transition-all duration-500">
+    <p className="text-sm font-medium text-gray-600 mb-3">Total Submissions</p>
+    <p className="text-4xl font-black text-gray-900 mb-4">
+      {forms.reduce((a, f) => a + f.submissions, 0)}
+    </p>
+    <div className="h-2 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full mx-auto w-24" />
+  </div>
+  
+  <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 text-center group hover:shadow-3xl hover:-translate-y-2 transition-all duration-500">
+    <p className="text-sm font-medium text-gray-600 mb-3">Avg Conversion</p>
+    <p className="text-4xl font-black text-gray-900 mb-4">
+      {forms.length > 0 
+        ? Math.round(forms.reduce((a, f) => a + parseFloat(f.conversion || '0'), 0) / forms.length) + '%'
+        : '0%'
+      }
+    </p>
+    <div className="h-2 bg-gradient-to-r from-purple-500 to-violet-600 rounded-full mx-auto w-24" />
+  </div>
+</div>
+
+       
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Create Form */}
-          <section className="lg:col-span-1 group bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl p-6 sm:p-5 lg:p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-2 lg:hover:-translate-y-3">
+         <section className="lg:col-span-1 group bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl p-6 sm:p-5 lg:p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-2 lg:hover:-translate-y-3">
+
+
+
             <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100/80">
               <div className="w-3 h-3 bg-emerald-400 rounded-full ring-2 ring-emerald-200/80"></div>
               <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
@@ -287,7 +351,8 @@ export default function Home() {
           </section>
 
           {/* Forms Table */}
-          <section className="lg:col-span-2 group bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl p-6 sm:p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-2 lg:hover:-translate-y-3">
+          
+          <section className="lg:col-span-2 group bg-white/80 backdrop-blur-2xl border border-white/60 rounded-3xl p-4 sm:p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-2 lg:hover:-translate-y-3">
             <div className="flex items-center gap-3 mb-8 pb-6 border-b border-gray-100/80">
               <div className="w-3 h-3 bg-blue-400 rounded-full ring-2 ring-blue-200/80"></div>
               <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -315,13 +380,12 @@ export default function Home() {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="bg-gradient-to-r from-white/70 to-gray-50/70 backdrop-blur-sm border-b-2 border-gray-200/80">
-                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60">Form Name</th>
-                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60 hidden md:table-cell">Form URL</th>
-                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60">Tracked Link</th>
-                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60 hidden sm:table-cell">Total Clicks</th>
-                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60">Total Submissions</th>
+                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60 whitespace-nowrap">Form Name</th>
+                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60 hidden sm:table-cell whitespace-nowrap">Form URL</th>
+                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60 whitespace-nowrap">Tracked Link</th>
+                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60 hidden sm:table-cell whitespace-nowrap" >Total Clicks</th>
+                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs border-r border-gray-200/60 whitespace-nowrap">Total Submissions</th>
                       <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs whitespace-nowrap">Conversion %</th>
-                      <th className="px-3 sm:px-4 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs w-16"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100/80">
@@ -333,7 +397,7 @@ export default function Home() {
                         <td className="px-3 sm:px-4 py-4 sm:py-5 font-semibold text-gray-900 max-w-[180px] sm:max-w-[200px] truncate cursor-pointer hover:text-emerald-600">
                           {form.name}
                         </td>
-                        <td className="px-3 sm:px-4 py-4 sm:py-5 align-top w-[35%] sm:w-[40%] hidden md:table-cell max-w-[400px]">
+                        <td className="px-3 sm:px-4 py-4 sm:py-5 align-top w-[35%] sm:w-[40%] hidden sm:table-cell max-w-[400px]">
                           <a
                             href={form.formUrl}
                             target="_blank"
