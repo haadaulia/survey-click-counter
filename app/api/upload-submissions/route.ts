@@ -11,8 +11,7 @@ function isNonEmptyRow(row: unknown): row is unknown[] {
 function extractFormName(file: File, workbook: XLSX.WorkBook): string {
   let formName = file.name
     .replace(/\.xlsx$/i, "")               // remove extension
-    .replace(/[-_]\d+-\d+$/i, "")         // remove dash/underscore + numbers at end
-    .replace(/\(\d+\s*\d*\)$/i, "")       // remove trailing (1), (1 1), etc.
+    .replace(/\(\d+[-\s]?\d*\)$/i, "")    // remove trailing (1), (1 1), (1-1)
     .replace(/[-_]/g, " ")                 // replace hyphens/underscores with space
     .trim();
 
