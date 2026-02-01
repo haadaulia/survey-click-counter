@@ -11,7 +11,7 @@
 
 ## 🚀 Features
 
-- **Excel Upload** - Parses Google Forms exports (auto-skips headers/empty rows)  
+- **Excel Upload** - Parses Microsoft Forms exports (auto-skips headers/empty rows)  
 - **Click Tracking** - Real-time link clicks per form  
 - **Submission Counting** - Bulk Excel increments via Supabase RPC  
 - **Conversion Rate** - `submissions ÷ clicks × 100%`  
