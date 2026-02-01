@@ -12,59 +12,83 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    
-    // Handle both CSV and Excel
-    let json: any[];
-    
-    if (file.name.endsWith('.csv')) {
-      const text = buffer.toString('utf-8');
-      const workbook = XLSX.read(text, { type: 'string' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      json = XLSX.utils.sheet_to_json(sheet);
-    } else {
-      const workbook = XLSX.read(buffer, { type: "buffer" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      json = XLSX.utils.sheet_to_json(sheet);
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // Get raw rows with headers
+
+    console.log('=== EXCEL DEBUG ===');
+    console.log('Total rows:', json.length);
+    console.log('Headers:', json[0]);
+    console.log('First data row:', json[1]);
+    console.log('Second data row:', json[2]);
+
+    // FIXED: Count NON-EMPTY data rows (skip header row 0)
+    const dataRows = json.slice(1); // Skip header row
+    const totalSubmissions = dataRows.filter(row => 
+      row && row.length > 0 && row.some(cell => cell !== null && cell !== undefined && cell !== "")
+    ).length;
+
+    console.log('Valid submissions found:', totalSubmissions);
+
+    if (totalSubmissions === 0) {
+      return NextResponse.json({ error: "No valid submissions found in Excel file" }, { status: 400 });
     }
 
-    // Process each row
+    // Get LATEST form
+    const { data: latestForm } = await supabaseAdmin
+      .from('forms')
+      .select('slug')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!latestForm?.[0]?.slug) {
+      return NextResponse.json({ error: "No forms found" }, { status: 400 });
+    }
+
+    const targetSlug = latestForm[0].slug;
+    console.log('Target form:', targetSlug);
+
+    // Process each valid submission
     let successCount = 0;
-    let errorCount = 0;
-    
-    for (const row of json) {
-      const slug = row["Form slug"] || row["slug"] || row["Slug"];
-      const submissions = parseInt(row["Submissions"] || row["submissions"] || "0");
+    let skipCount = 0;
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
       
-      if (!slug) {
-        errorCount++;
+      // Skip truly empty rows
+      if (!row || row.length === 0 || row.every(cell => cell === null || cell === undefined || cell === "")) {
+        console.log(`Skipping empty row ${i + 2}`); // +2 because we display 1-based + skipped header
+        skipCount++;
         continue;
       }
 
-      // Increment submissions the specified number of times
-      for (let i = 0; i < submissions; i++) {
-        const { error } = await supabaseAdmin.rpc("increment_submissions", { 
-          p_slug: slug 
-        });
-        
-        if (error) {
-          console.error(`Error incrementing for ${slug}:`, error);
-          errorCount++;
-          break;
-        }
-      }
+      console.log(`Processing submission ${i + 1}:`, row[3] || 'anonymous'); // Email column
+
+      const { error } = await supabaseAdmin.rpc("increment_submissions", {
+        slug: targetSlug
+      });
       
-      if (!error) successCount++;
+      if (error) {
+        console.error(`RPC failed for row ${i + 2}:`, error);
+        skipCount++;
+      } else {
+        successCount++;
+      }
     }
 
     return NextResponse.json({ 
-      ok: true, 
-      processed: successCount,
-      errors: errorCount 
+      success: true,
+      message: `✅ Processed ${totalSubmissions} submissions for ${targetSlug}`,
+      totalRows: json.length - 1,
+      successful: successCount,
+      skipped: skipCount,
+      targetForm: targetSlug
     });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error("Upload error:", error);
     return NextResponse.json({ 
-      error: "Failed to process file" 
+      error: error.message || "Failed to process file" 
     }, { status: 500 });
   }
 }
