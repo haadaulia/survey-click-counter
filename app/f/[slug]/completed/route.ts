@@ -26,7 +26,5 @@ export async function GET(
   if (updateError) {
     console.error("Submission update error", updateError);
   }
-
-  // After counting the submission, send user to a thank-you page
   return NextResponse.redirect(`/thank-you?form=${encodeURIComponent(slug)}`);
 }
