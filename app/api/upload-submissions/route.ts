@@ -6,8 +6,14 @@ function isNonEmptyRow(row: unknown): row is unknown[] {
   return Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && cell !== "");
 }
 
-function cleanFormName(name: string): string {
-  return name.replace(/\s*\(\d+-\d+\)$/i, '').trim();
+function cleanFormName(filename: string): string {
+  // "Test-Survey-A-1-1.xlsx" → "Test A"
+  return filename
+    .replace(/\.xlsx$/i, '')
+    .replace(/[-_]\d+-\d+$/i, '')  // Remove -1-1 or _1-1
+    .replace(/[-_]/g, ' ')         // Convert -/_ to spaces
+    .replace(/\b\w/g, l => l.toUpperCase())  // Title case
+    .trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -22,7 +28,6 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    
     const json: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
     const dataRows = (json.slice(1) as unknown[]).filter(isNonEmptyRow);
@@ -32,14 +37,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid submissions found" }, { status: 400 });
     }
 
-    // ✅ TYPE SAFE FORM NAME EXTRACTION
-    const rawFormName = Array.isArray(json[0]) && typeof json[0][0] === 'string' 
-      ? json[0][0] 
-      : '';
-    const cleanName = cleanFormName(rawFormName);
+    // ✅ FILENAME MATCHING - Perfect for Microsoft Forms
+    const rawFilename = file.name;
+    const cleanName = cleanFormName(rawFilename);
     
-    console.log('Raw Excel name:', rawFormName);
-    console.log('Cleaned name:', cleanName);
+    console.log('Filename:', rawFilename);
+    console.log('Matched form name:', cleanName);
 
     const { data: targetForms, error: formError } = await supabaseAdmin
       .from('forms')
@@ -50,8 +53,8 @@ export async function POST(req: NextRequest) {
     if (formError || !targetForms?.[0]) {
       return NextResponse.json({ 
         error: `Form "${cleanName}" not found`,
-        rawName: rawFormName,
-        detected: cleanName
+        filename: rawFilename,
+        matchedName: cleanName
       }, { status: 400 });
     }
 
@@ -68,8 +71,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true,
-      message: `✅ "${rawFormName}" → "${cleanName}" set to ${totalSubmissions} submissions`,
-      rawFormName,
+      message: `✅ "${rawFilename}" → "${cleanName}" set to ${totalSubmissions} submissions`,
+      filename: rawFilename,
       matchedForm: cleanName,
       totalSubmissions,
       targetSlug
