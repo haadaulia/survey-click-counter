@@ -14,18 +14,19 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // Get raw rows with headers
+    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
     console.log('=== EXCEL DEBUG ===');
     console.log('Total rows:', json.length);
     console.log('Headers:', json[0]);
     console.log('First data row:', json[1]);
-    console.log('Second data row:', json[2]);
 
-    // FIXED: Count NON-EMPTY data rows (skip header row 0)
-    const dataRows = json.slice(1); // Skip header row
-    const totalSubmissions = dataRows.filter(row => 
-      row && row.length > 0 && row.some(cell => cell !== null && cell !== undefined && cell !== "")
+    // FIXED: Type-safe row counting
+    const dataRows = json.slice(1) as (unknown[])[];
+    const totalSubmissions = dataRows.filter((row): row is unknown[] => 
+      Array.isArray(row) && 
+      row.length > 0 && 
+      row.some(cell => cell !== null && cell !== undefined && cell !== "")
     ).length;
 
     console.log('Valid submissions found:', totalSubmissions);
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid submissions found in Excel file" }, { status: 400 });
     }
 
-    // Get LATEST form
+    // Get LATEST form (assumes sorting works)
     const { data: latestForm } = await supabaseAdmin
       .from('forms')
       .select('slug')
@@ -57,12 +58,12 @@ export async function POST(req: NextRequest) {
       
       // Skip truly empty rows
       if (!row || row.length === 0 || row.every(cell => cell === null || cell === undefined || cell === "")) {
-        console.log(`Skipping empty row ${i + 2}`); // +2 because we display 1-based + skipped header
+        console.log(`Skipping empty row ${i + 2}`);
         skipCount++;
         continue;
       }
 
-      console.log(`Processing submission ${i + 1}:`, row[3] || 'anonymous'); // Email column
+      console.log(`Processing submission ${i + 1}:`, row[3] || 'anonymous');
 
       const { error } = await supabaseAdmin.rpc("increment_submissions", {
         slug: targetSlug
