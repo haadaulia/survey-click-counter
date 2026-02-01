@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-    
+    const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as unknown[][];
+
+    // Count data rows (skip header)
     const dataRows = (json.slice(1) as unknown[]).filter(isNonEmptyRow);
     const totalSubmissions = dataRows.length;
 
@@ -32,8 +33,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid submissions found" }, { status: 400 });
     }
 
-    // ✅ SMART FORM MATCHING
-    const rawFormName = json[0]?.[0]?.toString() || '';
+    // ✅ SMART FORM MATCHING - Type safe
+    const rawFormName = (json[0]?.[0] as string | undefined)?.toString() || '';
     const cleanName = cleanFormName(rawFormName);
     console.log('Raw Excel name:', rawFormName);
     console.log('Cleaned name:', cleanName);
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Upload error:", error);
+    return NextResponse.json({ error: error.message || "Failed to process file" }, { status: 500 });
   }
 }
