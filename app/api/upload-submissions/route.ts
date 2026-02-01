@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     // Fetch all forms from DB
     const { data: allForms, error } = await supabaseAdmin
       .from("forms")
-      .select("slug, name, submissions"); // get previous submission count too
+      .select("slug, name, submissions"); // get previous submission count
 
     if (error || !allForms || allForms.length === 0) {
       return NextResponse.json({ error: "No forms found in DB" }, { status: 500 });
@@ -87,43 +87,22 @@ export async function POST(req: NextRequest) {
     const targetSlug = matchedForm.slug;
     const matchedFormName = matchedForm.name;
     const previousSubmissions = matchedForm.submissions || 0;
+    const difference = totalSubmissions - previousSubmissions;
 
-    // Safety check: warn if new count differs by more than 50%
-    const difference = Math.abs(totalSubmissions - previousSubmissions);
-    const threshold = 0.5 * previousSubmissions; // 50% difference
-
-    if (previousSubmissions > 0 && difference > threshold) {
-      return NextResponse.json(
-        {
-          error: `Suspicious submission count change detected`,
-          message: `Previous: ${previousSubmissions}, New: ${totalSubmissions}`,
-          detected: formName,
-          matched: matchedFormName,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Overwrite submissions count (Excel is source of truth)
-    const { error: updateError } = await supabaseAdmin
-      .from("forms")
-      .update({ submissions: totalSubmissions })
-      .eq("slug", targetSlug);
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
+    // Respond with a "preview" instead of auto-applying update
     return NextResponse.json({
       success: true,
-      message: `✅ "${formName}" → "${matchedFormName}" set to ${totalSubmissions}`,
+      message: `Detected submission count for "${matchedFormName}"`,
       detected: formName,
       matched: matchedFormName,
-      totalSubmissions,
       previousSubmissions,
+      newSubmissions: totalSubmissions,
+      difference, // positive = increased, negative = decreased
       slug: targetSlug,
       rowsPreview: dataRows.slice(0, 5),
+      actionRequired: Math.abs(difference) > 0 // flag to prompt user if there’s a change
     });
+
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
