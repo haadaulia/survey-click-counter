@@ -6,6 +6,11 @@ function isNonEmptyRow(row: unknown): row is unknown[] {
   return Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && cell !== "");
 }
 
+function cleanFormName(name: string): string {
+  // Remove (1-1), (1-2), etc. and trim
+  return name.replace(/\s*\(\d+-\d+\)$/i, '').trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -27,19 +32,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid submissions found" }, { status: 400 });
     }
 
-    // Latest form
-    const { data: latestForm } = await supabaseAdmin
+    // ✅ SMART FORM MATCHING
+    const rawFormName = json[0]?.[0]?.toString() || '';
+    const cleanName = cleanFormName(rawFormName);
+    console.log('Raw Excel name:', rawFormName);
+    console.log('Cleaned name:', cleanName);
+
+    // Find form by cleaned name
+    const { data: targetForms, error: formError } = await supabaseAdmin
       .from('forms')
-      .select('slug')
-      .order('created_at', { ascending: false })
+      .select('slug, name')
+      .eq('name', cleanName)
       .limit(1);
 
-    if (!latestForm?.[0]?.slug) {
-      return NextResponse.json({ error: "No forms found" }, { status: 400 });
+    if (formError || !targetForms?.[0]) {
+      return NextResponse.json({ 
+        error: `Form "${cleanName}" not found`,
+        rawName: rawFormName,
+        detected: cleanName
+      }, { status: 400 });
     }
 
-    const targetSlug = latestForm[0].slug;
+    const targetSlug = targetForms[0].slug;
 
+    // Set submissions count
     const { error: updateError } = await supabaseAdmin
       .from("forms")
       .update({ submissions: totalSubmissions })
@@ -51,9 +67,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true,
-      message: `Set submissions to ${totalSubmissions}`,
+      message: `✅ "${rawFormName}" → "${cleanName}" set to ${totalSubmissions} submissions`,
+      rawFormName,
+      matchedForm: cleanName,
       totalSubmissions,
-      targetForm: targetSlug
+      targetSlug
     });
 
   } catch (error: any) {
