@@ -7,7 +7,6 @@ function isNonEmptyRow(row: unknown): row is unknown[] {
 }
 
 function cleanFormName(name: string): string {
-  // Remove (1-1), (1-2), etc. and trim
   return name.replace(/\s*\(\d+-\d+\)$/i, '').trim();
 }
 
@@ -23,9 +22,9 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as unknown[][];
+    
+    const json: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-    // Count data rows (skip header)
     const dataRows = (json.slice(1) as unknown[]).filter(isNonEmptyRow);
     const totalSubmissions = dataRows.length;
 
@@ -33,13 +32,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid submissions found" }, { status: 400 });
     }
 
-    // ✅ SMART FORM MATCHING - Type safe
-    const rawFormName = (json[0]?.[0] as string | undefined)?.toString() || '';
+    // ✅ TYPE SAFE FORM NAME EXTRACTION
+    const rawFormName = Array.isArray(json[0]) && typeof json[0][0] === 'string' 
+      ? json[0][0] 
+      : '';
     const cleanName = cleanFormName(rawFormName);
+    
     console.log('Raw Excel name:', rawFormName);
     console.log('Cleaned name:', cleanName);
 
-    // Find form by cleaned name
     const { data: targetForms, error: formError } = await supabaseAdmin
       .from('forms')
       .select('slug, name')
@@ -56,7 +57,6 @@ export async function POST(req: NextRequest) {
 
     const targetSlug = targetForms[0].slug;
 
-    // Set submissions count
     const { error: updateError } = await supabaseAdmin
       .from("forms")
       .update({ submissions: totalSubmissions })
