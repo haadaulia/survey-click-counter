@@ -10,11 +10,13 @@ function isNonEmptyRow(row: unknown): row is unknown[] {
 // Extract form name from filename first, fallback to sheet name
 function extractFormName(file: File, workbook: XLSX.WorkBook): string {
   let formName = file.name
-    .replace(/\.xlsx$/i, "")
-    .replace(/[-_]\d+-\d+$/i, "")
-    .replace(/[-_]/g, " ")
+    .replace(/\.xlsx$/i, "")               // remove extension
+    .replace(/[-_]\d+-\d+$/i, "")         // remove dash/underscore + numbers at end
+    .replace(/\(\d+\s*\d*\)$/i, "")       // remove trailing (1), (1 1), etc.
+    .replace(/[-_]/g, " ")                 // replace hyphens/underscores with space
     .trim();
 
+  // Fallback to sheet name if filename is empty or generic
   if (!formName || formName.toLowerCase() === "sheet1") {
     formName = workbook.SheetNames[0]?.replace("Sheet", "").trim() || "Default Form";
   }
