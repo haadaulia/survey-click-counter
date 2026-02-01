@@ -6,14 +6,20 @@ function isNonEmptyRow(row: unknown): row is unknown[] {
   return Array.isArray(row) && row.some(cell => cell !== null && cell !== undefined && cell !== "");
 }
 
-function cleanFormName(filename: string): string {
-  // "Test-Survey-A-1-1.xlsx" → "Test A"
-  return filename
+function extractFormName(file: File, workbook: XLSX.WorkBook): string {
+  // Try filename first
+  let formName = file.name
     .replace(/\.xlsx$/i, '')
-    .replace(/[-_]\d+-\d+$/i, '')  // Remove -1-1 or _1-1
-    .replace(/[-_]/g, ' ')         // Convert -/_ to spaces
-    .replace(/\b\w/g, l => l.toUpperCase())  // Title case
+    .replace(/[-_]\d+-\d+$/i, '')
+    .replace(/[-_]/g, ' ')
     .trim();
+
+  // Fallback to sheet name
+  if (!formName || formName === 'Sheet1') {
+    formName = workbook.SheetNames[0]?.replace('Sheet', '').trim() || 'Default Form';
+  }
+
+  return formName;
 }
 
 export async function POST(req: NextRequest) {
@@ -37,28 +43,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No valid submissions found" }, { status: 400 });
     }
 
-    // ✅ FILENAME MATCHING - Perfect for Microsoft Forms
-    const rawFilename = file.name;
-    const cleanName = cleanFormName(rawFilename);
-    
-    console.log('Filename:', rawFilename);
-    console.log('Matched form name:', cleanName);
+    // ✅ SMART NAME EXTRACTION
+    const formName = extractFormName(file, workbook);
+    console.log('Extracted form name:', formName);
 
-    const { data: targetForms, error: formError } = await supabaseAdmin
+    // FUZZY MATCH - finds form with name CONTAINING extracted name
+    const { data: targetForms, error } = await supabaseAdmin
       .from('forms')
       .select('slug, name')
-      .eq('name', cleanName)
+      .ilike('name', `%${formName}%`)  // Contains match
       .limit(1);
 
-    if (formError || !targetForms?.[0]) {
+    if (error || !targetForms?.[0]) {
       return NextResponse.json({ 
-        error: `Form "${cleanName}" not found`,
-        filename: rawFilename,
-        matchedName: cleanName
+        error: `No form found matching "${formName}"`,
+        detected: formName,
+        filename: file.name
       }, { status: 400 });
     }
 
     const targetSlug = targetForms[0].slug;
+    const matchedFormName = targetForms[0].name;
 
     const { error: updateError } = await supabaseAdmin
       .from("forms")
@@ -71,15 +76,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true,
-      message: `✅ "${rawFilename}" → "${cleanName}" set to ${totalSubmissions} submissions`,
-      filename: rawFilename,
-      matchedForm: cleanName,
+      message: `✅ "${formName}" → "${matchedFormName}" set to ${totalSubmissions}`,
+      detected: formName,
+      matched: matchedFormName,
       totalSubmissions,
-      targetSlug
+      slug: targetSlug
     });
 
   } catch (error: any) {
-    console.error("Upload error:", error);
-    return NextResponse.json({ error: error.message || "Failed to process file" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
