@@ -27,15 +27,25 @@ function extractFormName(file: File, workbook: XLSX.WorkBook): string {
   return formName;
 }
 
-// Generate unique slug from base, avoiding collisions in a set
-function generateUniqueSlug(baseSlug: string, existingSlugs: Set<string>) {
+// Generate unique slug for new forms
+async function generateUniqueSlug(baseSlug: string) {
   let slug = baseSlug;
   let counter = 1;
-  while (existingSlugs.has(slug)) {
+
+  while (true) {
+    const { data: existing, error } = await supabaseAdmin
+      .from("forms")
+      .select("slug")
+      .eq("slug", slug)
+      .limit(1);
+
+    if (error) throw new Error(error.message);
+    if (!existing || existing.length === 0) break;
+
     slug = `${baseSlug}-${counter}`;
     counter++;
   }
-  existingSlugs.add(slug);
+
   return slug;
 }
 
@@ -48,23 +58,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No files provided" }, { status: 400 });
     }
 
-    // Fetch all existing forms once
-    const { data: allForms, error: fetchError } = await supabaseAdmin
+    const { data: allForms } = await supabaseAdmin
       .from("forms")
-      .select("slug, name");
+      .select("slug, name, submissions");
 
-    if (fetchError) {
-      return NextResponse.json({ error: fetchError.message }, { status: 500 });
-    }
-
-    const existingSlugs = new Set(allForms?.map(f => f.slug) || []);
-    const slugMap = new Map<string, string>(); // normalizedName -> slug
-    allForms?.forEach(f => slugMap.set(normalizeName(f.name), f.slug));
-
-    const batchUpsert: any[] = [];
     const results: any[] = [];
 
-    // Process all files
     for (const file of files) {
       try {
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -72,8 +71,7 @@ export async function POST(req: NextRequest) {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const json: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-        const rows = json as unknown[][];
-        const dataRows = rows.slice(1).filter(isNonEmptyRow);
+        const dataRows = (json.slice(1) as unknown[][]).filter(isNonEmptyRow);
         const totalSubmissions = dataRows.length;
 
         if (totalSubmissions === 0) {
@@ -84,45 +82,53 @@ export async function POST(req: NextRequest) {
         const formName = extractFormName(file, workbook);
         const normalized = normalizeName(formName);
 
-        let slug: string;
-        let isNewForm = false;
+        let matchedForm = allForms?.find(f => normalizeName(f.name) === normalized)
+          || allForms?.find(f => normalizeName(f.name).includes(normalized));
 
-        if (slugMap.has(normalized)) {
-          slug = slugMap.get(normalized)!;
+        let targetSlug: string;
+        let matchedFormName: string;
+
+        if (!matchedForm) {
+          // New form
+          matchedFormName = formName;
+          const baseSlug = formName.toLowerCase().replace(/\s+/g, "-");
+          targetSlug = await generateUniqueSlug(baseSlug);
+
+          const { data: insertData, error: insertError } = await supabaseAdmin
+            .from("forms")
+            .insert([{ slug: targetSlug, name: matchedFormName, submissions: totalSubmissions }])
+            .select()
+            .single();
+
+          if (insertError) {
+            results.push({ file: file.name, error: insertError.message });
+            continue;
+          }
+
+          matchedFormName = insertData.name;
         } else {
-          isNewForm = true;
-          const baseSlug = normalized.replace(/\s+/g, "-");
-          slug = generateUniqueSlug(baseSlug, existingSlugs);
-          slugMap.set(normalized, slug);
-        }
+          // Existing form
+          targetSlug = matchedForm.slug;
+          matchedFormName = matchedForm.name;
 
-        batchUpsert.push({
-          slug,
-          name: formName,
-          submissions: totalSubmissions,
-        });
+          const { error: updateError } = await supabaseAdmin
+            .from("forms")
+            .update({ submissions: totalSubmissions })
+            .eq("slug", targetSlug);
+
+          if (updateError) {
+            results.push({ file: file.name, error: updateError.message });
+            continue;
+          }
+        }
 
         results.push({
           file: file.name,
-          slug,
+          matched: matchedFormName,
           totalSubmissions,
-          message: isNewForm
-            ? `New form "${formName}" will be created with ${totalSubmissions} submissions`
-            : `Existing form "${formName}" will be updated to ${totalSubmissions} submissions`,
         });
       } catch (fileError: any) {
         results.push({ file: file.name, error: fileError.message });
-      }
-    }
-
-    if (batchUpsert.length > 0) {
-      // Use upsert to create new forms or update existing ones in one call
-      const { error: upsertError } = await supabaseAdmin
-        .from("forms")
-        .upsert(batchUpsert, { onConflict: "slug" });
-
-      if (upsertError) {
-        return NextResponse.json({ error: upsertError.message }, { status: 500 });
       }
     }
 
