@@ -3,8 +3,10 @@ import "./globals.css";
 import { Amiri } from "next/font/google";
 
 const amiri = Amiri({
-  subsets: ["latin"],
-  weight: "400",
+  subsets: ["arabic", "latin"],
+  weight: ["400", "700"],
+  display: "swap",
+  adjustFontFallback: false,
 });
 
 export const metadata = {
