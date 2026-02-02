@@ -29,6 +29,28 @@ function extractFormName(file: File, workbook: XLSX.WorkBook): string {
   return formName;
 }
 
+// Generate a unique slug for a new form
+async function generateUniqueSlug(baseSlug: string) {
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const { data: existing, error } = await supabaseAdmin
+      .from("forms")
+      .select("slug")
+      .eq("slug", slug)
+      .limit(1);
+
+    if (error) throw new Error(error.message);
+    if (!existing || existing.length === 0) break;
+
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return slug;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -78,7 +100,8 @@ export async function POST(req: NextRequest) {
     // Handle new forms
     if (!matchedForm) {
       matchedFormName = formName;
-      targetSlug = formName.toLowerCase().replace(/\s+/g, "-");
+      const baseSlug = formName.toLowerCase().replace(/\s+/g, "-");
+      targetSlug = await generateUniqueSlug(baseSlug);
 
       const { data: insertData, error: insertError } = await supabaseAdmin
         .from("forms")
