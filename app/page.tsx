@@ -99,7 +99,7 @@ const URLModal = ({
       {/*Modal*/}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div 
-          className={`w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all duration-100 ease-out ${
+          className={`w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all duration-150 ease-out ${
             localOpen 
               ? 'scale-100 opacity-100 translate-y-0' 
               : 'scale-95 opacity-0 translate-y-2'
