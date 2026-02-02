@@ -539,8 +539,10 @@ const closeModal = () => {
                 <p className="text-slate-500">Create your first tracked form to get started</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
+              <div className="w-full overflow-hidden">
+  <div className="overflow-x-auto scrollbar-hide">
+    <table className="w-full table-auto text-sm border-collapse">
+
                   <thead>
                     <tr className="bg-gradient-to-r from-slate-50 to-slate-100/50">
                       <th className="px-4 py-4 text-left font-bold text-slate-600 uppercase tracking-wider text-xs border-r border-slate-200/60">Form name</th>
@@ -629,6 +631,7 @@ const closeModal = () => {
 
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </section>
