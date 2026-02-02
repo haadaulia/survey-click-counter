@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 
 // Check if a row has any non-empty cell (ignores whitespace)
-function isNonEmptyRow(row: unknown): row is unknown[] {
+function isNonEmptyRow(row: unknown[]): boolean {
   return Array.isArray(row) && row.some(cell => String(cell).trim() !== "");
 }
 
@@ -47,8 +47,9 @@ export async function POST(req: NextRequest) {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const json: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-    // Skip header row, filter empty rows
-    const dataRows = (json.slice(1) as unknown[]).filter(isNonEmptyRow);
+    // Correctly handle rows
+    const rows = json as unknown[][];
+    const dataRows = rows.slice(1).filter(isNonEmptyRow);
     const totalSubmissions = dataRows.length;
 
     if (totalSubmissions === 0) {
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
 
     const formName = extractFormName(file, workbook);
     console.log("Normalized form name:", formName);
+    console.log("Total submissions detected:", totalSubmissions);
 
     // Fetch all forms from DB
     const { data: allForms, error } = await supabaseAdmin
@@ -67,15 +69,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Error fetching forms from DB" }, { status: 500 });
     }
 
-    // Try exact match first
+    // Match normalized name
     let matchedForm = allForms?.find(f => normalizeName(f.name) === formName);
 
-    // Fallback: partial match
     if (!matchedForm) {
       matchedForm = allForms?.find(f => normalizeName(f.name).includes(formName));
     }
 
-    // If still not found → create a new form automatically
+    // Handle new forms
     let isNewForm = false;
     let targetSlug: string;
     let previousSubmissions = 0;
@@ -84,9 +85,9 @@ export async function POST(req: NextRequest) {
     if (!matchedForm) {
       isNewForm = true;
       matchedFormName = formName;
-      targetSlug = formName.toLowerCase().replace(/\s+/g, "-"); // simple slug
+      targetSlug = formName.toLowerCase().replace(/\s+/g, "-");
+
       if (applyUpdate) {
-        // Insert new form
         const { data: insertData, error: insertError } = await supabaseAdmin
           .from("forms")
           .insert([{ slug: targetSlug, name: matchedFormName, submissions: totalSubmissions }])
@@ -108,9 +109,9 @@ export async function POST(req: NextRequest) {
 
     const difference = totalSubmissions - previousSubmissions;
 
-    // Apply update if flag is set
+    // Apply update if requested and not a new form
     let updateApplied = false;
-    if (!isNewForm && applyUpdate) {
+    if (!isNewForm && applyUpdate && difference !== 0) {
       const { error: updateError } = await supabaseAdmin
         .from("forms")
         .update({ submissions: totalSubmissions })
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
       updateApplied = true;
     }
 
-    // Return preview + update status
+    // Return preview and update status
     return NextResponse.json({
       success: updateApplied || isNewForm,
       message: applyUpdate
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest) {
       isNewForm,
       updateApplied,
     });
+
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
