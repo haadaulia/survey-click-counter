@@ -32,6 +32,8 @@ function extractFormName(file: File, workbook: XLSX.WorkBook): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const applyUpdate = req.nextUrl.searchParams.get("apply") === "true";
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
 
@@ -59,50 +61,84 @@ export async function POST(req: NextRequest) {
     // Fetch all forms from DB
     const { data: allForms, error } = await supabaseAdmin
       .from("forms")
-      .select("slug, name, submissions"); // get previous submission count
+      .select("slug, name, submissions");
 
-    if (error || !allForms || allForms.length === 0) {
-      return NextResponse.json({ error: "No forms found in DB" }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: "Error fetching forms from DB" }, { status: 500 });
     }
 
-    // Match normalized name
-    let matchedForm = allForms.find(f => normalizeName(f.name) === formName);
+    // Try exact match first
+    let matchedForm = allForms?.find(f => normalizeName(f.name) === formName);
 
-    // Fallback: partial match if exact fails
+    // Fallback: partial match
     if (!matchedForm) {
-      matchedForm = allForms.find(f => normalizeName(f.name).includes(formName));
+      matchedForm = allForms?.find(f => normalizeName(f.name).includes(formName));
     }
+
+    // If still not found → create a new form automatically
+    let isNewForm = false;
+    let targetSlug: string;
+    let previousSubmissions = 0;
+    let matchedFormName: string;
 
     if (!matchedForm) {
-      return NextResponse.json(
-        {
-          error: `No form found matching "${formName}"`,
-          detected: formName,
-          filename: file.name,
-        },
-        { status: 400 }
-      );
+      isNewForm = true;
+      matchedFormName = formName;
+      targetSlug = formName.toLowerCase().replace(/\s+/g, "-"); // simple slug
+      if (applyUpdate) {
+        // Insert new form
+        const { data: insertData, error: insertError } = await supabaseAdmin
+          .from("forms")
+          .insert([{ slug: targetSlug, name: matchedFormName, submissions: totalSubmissions }])
+          .select()
+          .single();
+
+        if (insertError) {
+          return NextResponse.json({ error: insertError.message }, { status: 500 });
+        }
+
+        previousSubmissions = 0;
+        matchedFormName = insertData.name;
+      }
+    } else {
+      targetSlug = matchedForm.slug;
+      matchedFormName = matchedForm.name;
+      previousSubmissions = matchedForm.submissions || 0;
     }
 
-    const targetSlug = matchedForm.slug;
-    const matchedFormName = matchedForm.name;
-    const previousSubmissions = matchedForm.submissions || 0;
     const difference = totalSubmissions - previousSubmissions;
 
-    // Respond with a "preview" instead of auto-applying update
+    // Apply update if flag is set
+    let updateApplied = false;
+    if (!isNewForm && applyUpdate) {
+      const { error: updateError } = await supabaseAdmin
+        .from("forms")
+        .update({ submissions: totalSubmissions })
+        .eq("slug", targetSlug);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+      updateApplied = true;
+    }
+
+    // Return preview + update status
     return NextResponse.json({
-      success: true,
-      message: `Detected submission count for "${matchedFormName}"`,
+      success: updateApplied || isNewForm,
+      message: applyUpdate
+        ? `✅ Submissions updated for "${matchedFormName}"`
+        : `Preview: "${matchedFormName}" has ${previousSubmissions} submissions`,
       detected: formName,
       matched: matchedFormName,
       previousSubmissions,
       newSubmissions: totalSubmissions,
-      difference, // positive = increased, negative = decreased
+      difference,
       slug: targetSlug,
       rowsPreview: dataRows.slice(0, 5),
-      actionRequired: Math.abs(difference) > 0 // flag to prompt user if there’s a change
+      actionRequired: difference !== 0,
+      isNewForm,
+      updateApplied,
     });
-
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
