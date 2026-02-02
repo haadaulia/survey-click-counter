@@ -52,11 +52,13 @@ const URLModal = ({
   type: 'form' | 'tracked';
 }) => {
   const [copied, setCopied] = useState(false);
-  const [localOpen, setLocalOpen] = useState(false);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setLocalOpen(true);
+      setShow(true);
+    } else {
+      setTimeout(onClose, 150);
     }
   }, [isOpen]);
 
@@ -78,35 +80,23 @@ const URLModal = ({
   };
 
   const handleClose = () => {
-    setLocalOpen(false);
-    setTimeout(onClose, 100);
+    setShow(false);
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* fixed cursor */}
       <div 
-  className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-150 cursor-default"
-  style={{ cursor: 'default !important' }}
-  onClick={handleClose}
-/>
-
-
-
+        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-all duration-150 ${show ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={handleClose}
+      />
       
-      {/*Modal*/}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div 
-          className={`w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all duration-150 ease-out ${
-            localOpen 
-              ? 'scale-100 opacity-100 translate-y-0' 
-              : 'scale-95 opacity-0 translate-y-2'
-          }`}
+          className={`w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${show ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* modal content*/}
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
               <div className={`w-1.5 h-10 rounded-full ${type === 'form' ? 'bg-gradient-to-b from-blue-500 to-blue-600' : 'bg-gradient-to-b from-teal-500 to-emerald-600'}`}></div>
@@ -114,9 +104,9 @@ const URLModal = ({
             </h3>
             <button
               onClick={handleClose}
-              className="p-2.5 hover:bg-slate-100/80 rounded-2xl transition-all duration-200 group"
+              className="p-2.5 hover:bg-slate-100/80 rounded-2xl transition-all duration-200"
             >
-              <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-slate-400 hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -138,7 +128,7 @@ const URLModal = ({
             <div className="flex gap-3">
               <button
                 onClick={handleCopy}
-                className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-semibold shadow-lg hover:shadow-xl focus:ring-4 focus:ring-teal-200 transition-all duration-200 flex items-center justify-center gap-2.5 transform hover:-translate-y-0.5"
+                className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2.5"
               >
                 {copied ? (
                   <>
@@ -162,7 +152,7 @@ const URLModal = ({
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl focus:ring-4 focus:ring-blue-200 transition-all duration-200 flex items-center gap-2.5 transform hover:-translate-y-0.5"
+                  className="py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2.5"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -177,6 +167,7 @@ const URLModal = ({
     </>
   );
 };
+
 
 
 
