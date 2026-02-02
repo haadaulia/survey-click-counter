@@ -52,6 +52,18 @@ const URLModal = ({
   type: 'form' | 'tracked';
 }) => {
   const [copied, setCopied] = useState(false);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShow(true);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setShow(false);
+    setTimeout(onClose, 150);
+  };
 
   const handleCopy = async () => {
     try {
@@ -70,25 +82,22 @@ const URLModal = ({
     }
   };
 
-  const handleClose = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onClose();
-  };
-
   if (!isOpen) return null;
 
   return (
     <>
       <div 
-        className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm"
+        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-all duration-150 ${show ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={handleClose}
       />
       
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div 
-          className="w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 pointer-events-auto"
+          className={`w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all duration-200 ease-out ${show ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* modal content */}
+
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
               <div className={`w-1.5 h-10 rounded-full ${type === 'form' ? 'bg-gradient-to-b from-blue-500 to-blue-600' : 'bg-gradient-to-b from-teal-500 to-emerald-600'}`}></div>
