@@ -79,33 +79,34 @@ const URLModal = ({
 
   const handleClose = () => {
     setLocalOpen(false);
-    setTimeout(onClose, 300);
+    setTimeout(onClose, 100);
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Backdrop - FIXED CURSOR */}
+      {/* fixed cursor */}
       <div 
-  className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300 cursor-default"
+  className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-150 cursor-default"
   style={{ cursor: 'default !important' }}
   onClick={handleClose}
 />
 
 
+
       
-      {/* Modal - SMOOTH ANIMATION */}
+      {/*Modal*/}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div 
-          className={`w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all duration-300 ease-out ${
+          className={`w-full max-w-2xl p-10 bg-white rounded-3xl shadow-2xl border border-slate-100 transform transition-all duration-100 ease-out ${
             localOpen 
               ? 'scale-100 opacity-100 translate-y-0' 
               : 'scale-95 opacity-0 translate-y-2'
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Your existing modal content - unchanged */}
+          {/* modal content*/}
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
               <div className={`w-1.5 h-10 rounded-full ${type === 'form' ? 'bg-gradient-to-b from-blue-500 to-blue-600' : 'bg-gradient-to-b from-teal-500 to-emerald-600'}`}></div>
