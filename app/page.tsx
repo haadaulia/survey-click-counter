@@ -523,12 +523,22 @@ const closeModal = () => {
               </h2>
             </div>
 
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <div className="w-12 h-12 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin"></div>
-                <p className="text-base text-slate-600 font-medium">Loading forms...</p>
-              </div>
-            ) : forms.length === 0 ? (
+          {loading ? (
+  <div className="space-y-4">
+    {[...Array(3)].map((_, i) => (
+      <div key={i} className="flex items-center gap-4 p-5 bg-slate-50/50 rounded-2xl animate-pulse">
+        <div className="flex-1 h-5 bg-slate-200 rounded-xl w-3/4"></div>
+        <div className="w-24 h-5 bg-slate-200 rounded-xl"></div>
+        <div className="w-20 h-5 bg-slate-200 rounded-xl"></div>
+        <div className="w-16 h-5 bg-slate-200 rounded-xl mx-auto"></div>
+        <div className="w-16 h-5 bg-slate-200 rounded-xl mx-auto"></div>
+        <div className="w-20 h-5 bg-slate-200 rounded-xl mx-auto"></div>
+        <div className="w-12 h-12 bg-slate-200 rounded-xl ml-auto"></div>
+      </div>
+    ))}
+  </div>
+) : forms.length === 0 ? (
+
               <div className="text-center py-20">
                 <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
