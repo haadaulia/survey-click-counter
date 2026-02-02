@@ -22,7 +22,6 @@ function normalizeName(name: string): string {
 function extractFormName(file: File, workbook: XLSX.WorkBook): string {
   let formName = normalizeName(file.name);
 
-  // Fallback to sheet name
   if (!formName || formName === "sheet1") {
     formName = normalizeName(workbook.SheetNames[0] || "Default Form");
   }
@@ -32,8 +31,6 @@ function extractFormName(file: File, workbook: XLSX.WorkBook): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const applyUpdate = req.nextUrl.searchParams.get("apply") === "true";
-
     const formData = await req.formData();
     const file = formData.get("file") as File;
 
@@ -47,7 +44,7 @@ export async function POST(req: NextRequest) {
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const json: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-    // Correctly handle rows
+    // Correctly slice rows after header and filter non-empty
     const rows = json as unknown[][];
     const dataRows = rows.slice(1).filter(isNonEmptyRow);
     const totalSubmissions = dataRows.length;
@@ -71,47 +68,33 @@ export async function POST(req: NextRequest) {
 
     // Match normalized name
     let matchedForm = allForms?.find(f => normalizeName(f.name) === formName);
-
     if (!matchedForm) {
       matchedForm = allForms?.find(f => normalizeName(f.name).includes(formName));
     }
 
-    // Handle new forms
-    let isNewForm = false;
     let targetSlug: string;
-    let previousSubmissions = 0;
     let matchedFormName: string;
 
+    // Handle new forms
     if (!matchedForm) {
-      isNewForm = true;
       matchedFormName = formName;
       targetSlug = formName.toLowerCase().replace(/\s+/g, "-");
 
-      if (applyUpdate) {
-        const { data: insertData, error: insertError } = await supabaseAdmin
-          .from("forms")
-          .insert([{ slug: targetSlug, name: matchedFormName, submissions: totalSubmissions }])
-          .select()
-          .single();
+      const { data: insertData, error: insertError } = await supabaseAdmin
+        .from("forms")
+        .insert([{ slug: targetSlug, name: matchedFormName, submissions: totalSubmissions }])
+        .select()
+        .single();
 
-        if (insertError) {
-          return NextResponse.json({ error: insertError.message }, { status: 500 });
-        }
-
-        previousSubmissions = 0;
-        matchedFormName = insertData.name;
+      if (insertError) {
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
       }
+
+      matchedFormName = insertData.name;
     } else {
       targetSlug = matchedForm.slug;
       matchedFormName = matchedForm.name;
-      previousSubmissions = matchedForm.submissions || 0;
-    }
 
-    const difference = totalSubmissions - previousSubmissions;
-
-    // Apply update if requested and not a new form
-    let updateApplied = false;
-    if (!isNewForm && applyUpdate && difference !== 0) {
       const { error: updateError } = await supabaseAdmin
         .from("forms")
         .update({ submissions: totalSubmissions })
@@ -120,27 +103,17 @@ export async function POST(req: NextRequest) {
       if (updateError) {
         return NextResponse.json({ error: updateError.message }, { status: 500 });
       }
-      updateApplied = true;
     }
 
-    // Return preview and update status
     return NextResponse.json({
-      success: updateApplied || isNewForm,
-      message: applyUpdate
-        ? `✅ Submissions updated for "${matchedFormName}"`
-        : `Preview: "${matchedFormName}" has ${previousSubmissions} submissions`,
+      success: true,
+      message: `✅ "${matchedFormName}" submissions set to ${totalSubmissions}`,
       detected: formName,
       matched: matchedFormName,
-      previousSubmissions,
-      newSubmissions: totalSubmissions,
-      difference,
+      totalSubmissions,
       slug: targetSlug,
       rowsPreview: dataRows.slice(0, 5),
-      actionRequired: difference !== 0,
-      isNewForm,
-      updateApplied,
     });
-
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
