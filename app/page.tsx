@@ -58,8 +58,8 @@ const URLModal = ({
     if (isOpen) {
       setShow(true);
     } else {
-      setTimeout(onClose, 150);
-    }
+  setTimeout(() => setShow(false), 150);
+}
   }, [isOpen]);
 
   const handleCopy = async () => {
@@ -329,6 +329,7 @@ const openModal = (url: string, title: string, type: 'form' | 'tracked') => {
 const closeModal = () => {
   setModalState({ isOpen: false, url: '', title: '', type: 'form' });
 };
+
 
 
 
