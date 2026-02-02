@@ -168,44 +168,48 @@ export default function Home() {
     }
   };
 
-  const handleUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ): Promise<void> => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+  
     setUploading(true);
     const formData = new FormData();
-    formData.append("file", file);
-
+    for (const file of files) formData.append("files", file);
+  
     try {
       const res = await fetch("/api/upload-submissions", {
         method: "POST",
         body: formData,
       });
-
+  
+      const result = await res.json();
+  
       if (!res.ok) {
-        const error = await res.json();
-        alert(`Failed to upload file: ${error.error || "Unknown error"}`);
+        alert(`Failed to upload: ${result.error || "Unknown error"}`);
         return;
       }
-
-      const result = await res.json();
+  
       alert(
-        `Upload successful! Processed: ${result.processed || 0}, Errors: ${
-          result.errors || 0
-        }`
+        `Upload complete!\n` +
+        result.results
+          .map((r: any) =>
+            r.error
+              ? `❌ ${r.file}: ${r.error}`
+              : `✅ ${r.file}: "${r.matched}" set to ${r.totalSubmissions}`
+          )
+          .join("\n")
       );
-
+  
       await loadForms();
     } catch (err) {
       console.error(err);
-      alert("Failed to upload file");
+      alert("Failed to upload files");
     } finally {
       setUploading(false);
       e.target.value = "";
     }
   };
+
 
   const handleCopyLink = async (link: string): Promise<void> => {
     try {
@@ -336,11 +340,14 @@ export default function Home() {
                 </label>
                 <input
                   type="file"
+                  name="files"
+                  multiple
                   accept=".xlsx,.csv"
                   onChange={handleUpload}
                   disabled={uploading}
                   className="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-6 file:rounded-2xl file:border-0 file:text-lg file:font-bold file:bg-gradient-to-r file:from-emerald-500 file:to-teal-600 file:text-white hover:file:from-emerald-600 hover:file:to-teal-700 file:shadow-xl hover:file:shadow-2xl file:transition-all file:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 />
+
                 {uploading && (
                   <p className="text-sm text-emerald-600 mt-2 font-medium flex items-center gap-2 animate-pulse">
                     ⬆️ Processing...
