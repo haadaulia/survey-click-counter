@@ -29,7 +29,7 @@ text
 | Feedback Form  | 156    | 41          | **26.3%**  |
 
 ## 🎯 Live Demo
-**[Deployed on Vercel](https://survey-click-counter-xxx.vercel.app/)**  
+**[Deployed on Vercel](https://survey-click-counter.vercel.app/)**  
 **📱 Fully responsive • 🌍 Live worldwide • ⚡ Serverless scaling**
 
 ## 🚀 Quick Start
