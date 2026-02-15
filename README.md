@@ -85,7 +85,6 @@ $$ LANGUAGE plpgsql;
 -- 5.
 SELECT slug, name, submissions FROM forms; 
 
-bash
 git clone https://github.com/haadaulia/survey-click-counter.git
 cd survey-click-counter
 cp .env.example .env.local
