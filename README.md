@@ -34,64 +34,57 @@ Deployment: Vercel (Serverless)
 
 1. **Create Supabase project**: [supabase.com/dashboard](https://supabase.com/dashboard) → **New Project** (wait ~2min)
 
-2. **Get API Keys**: Settings → **API** → Copy these 3:
+2. **Get API Keys**: Settings → **API** → Copy these 3 to `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://[project-id].supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 text
 
-3. **Run SQL** (Dashboard → **SQL Editor**, in order):
+3. **Run SQL** (Dashboard → **SQL Editor**, **one block at a time**):
 
 ```sql
 -- 1. CREATE TABLE FIRST
 CREATE TABLE forms (
-  slug TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  form_url TEXT NOT NULL,
-  clicks INTEGER DEFAULT 0,
-  submissions INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW()
+slug TEXT PRIMARY KEY,
+name TEXT NOT NULL,
+form_url TEXT NOT NULL,
+clicks INTEGER DEFAULT 0,
+submissions INTEGER DEFAULT 0,
+created_at TIMESTAMP DEFAULT NOW()
 );
-
+sql
 -- 2. ENABLE RLS (security)
 ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
-
--- 3. Function to increment clicks and return form URL
+sql
+-- 3. CLICK TRACKING FUNCTION
 CREATE OR REPLACE FUNCTION increment_clicks_and_get_url(p_slug TEXT)
 RETURNS TEXT AS $$
-DECLARE
-  v_form_url TEXT;
+DECLARE v_form_url TEXT;
 BEGIN
-  UPDATE forms 
-  SET clicks = clicks + 1 
-  WHERE slug = p_slug
+  UPDATE forms SET clicks = clicks + 1 WHERE slug = p_slug
   RETURNING form_url INTO v_form_url;
-  
   RETURN v_form_url;
 END;
 $$ LANGUAGE plpgsql;
-
--- 4. Function to increment submissions
+sql
+-- 4. SUBMISSION TRACKING FUNCTION
 CREATE OR REPLACE FUNCTION increment_submissions(p_slug TEXT)
 RETURNS VOID AS $$
 BEGIN
-  UPDATE forms 
-  SET submissions = submissions + 1 
-  WHERE slug = p_slug;
+  UPDATE forms SET submissions = submissions + 1 WHERE slug = p_slug;
 END;
 $$ LANGUAGE plpgsql;
+sql
 
--- 5.
-SELECT slug, name, submissions FROM forms; 
-
+bash
 git clone https://github.com/haadaulia/survey-click-counter.git
 cd survey-click-counter
 cp .env.example .env.local
-# Paste your 3 keys into .env.local
+# Paste your 3 keys above into .env.local
 npm install
 npm run dev
-Open localhost:3000 → Live clicks work instantly!
+Open localhost:3000 → Click test link → Watch live counts update! ✅
 
 💼 Production Challenges Solved
 TypeScript strict mode - Next.js 16 App Router compatibility
