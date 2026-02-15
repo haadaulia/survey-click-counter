@@ -84,6 +84,7 @@ cp .env.example .env.local
 # Paste your 3 keys above into .env.local
 npm install
 npm run dev
+```
 Open localhost:3000 → Click test link → Watch live counts update! ✅
 
 💼 Production Challenges Solved
