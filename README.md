@@ -85,28 +85,29 @@ cp .env.example .env.local
 npm install
 npm run dev
 ```
-Open localhost:3000 → Click test link → Watch live counts update! ✅
+<div align="center">
 
-💼 Production Challenges Solved
-TypeScript strict mode - Next.js 16 App Router compatibility
+# 🚀 Ready to Launch!
 
-Excel parsing edge cases - Malformed rows, empty cells, headers
+**`localhost:3000` → Click test link → Watch live counts tick up instantly!** ✅
 
-Race condition prevention - Atomic Supabase updates
+</div>
 
-Vercel deployment - Env vars, Turbopack, serverless optimization
+## 💼 Production Challenges Conquered
+| Challenge | Solution |
+|-----------|----------|
+| **TypeScript Strict** | Next.js 16 App Router + Turbopack |
+| **Excel Edge Cases** | Parses malformed rows, skips headers/empties |
+| **Race Conditions** | Atomic Supabase RPC updates |
+| **Vercel Deploy** | Serverless env vars + optimization |
 
-✨ Recent Updates
-v2.0 - Production-ready dashboard
+## ✨ v2.0 Release Notes
+🔥 Excel parser v2 (handles ALL Microsoft Forms exports)
+🎯 Smart form detection (filename matching)
+📊 Conversion rate analytics
+✅ Bulk upload feedback
+🛡️ Error boundaries everywhere
 
-Excel parser v2 (handles ALL Microsoft Forms exports)
+text
 
-Smart form detection (filename matching)
-
-Conversion rate analytics
-
-Bulk upload feedback
-
-Error boundaries everywhere
-
-Built for STEM Muslims Society @ Imperial College London ✨
+**Built for [STEM Muslims Society @ Imperial College London](https://www.imperial.ac.uk/) ✨**
