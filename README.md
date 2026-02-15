@@ -15,12 +15,10 @@
 - ✅ **Multi-Form Support** - Smart form detection & targeting  
 
 ## 🛠 Tech Stack
-Frontend: Next.js 16 (App Router) + TypeScript + Turbopack
-Backend: Supabase PostgreSQL + Admin RPC + Edge Functions
-Excel: XLSX.js parsing engine
+Frontend: Next.js 16 (App Router) + TypeScript + Turbopack  
+Backend: Supabase PostgreSQL + Admin RPC + Edge Functions  
+Excel: XLSX.js parsing engine  
 Deployment: Vercel (Serverless)
-
-text
 
 ## 📈 Live Metrics Example
 | Form           | Clicks | Submissions | Conversion |
@@ -33,12 +31,33 @@ text
 **📱 Fully responsive • 🌍 Live worldwide • ⚡ Serverless scaling**
 
 ## 🚀 Quick Start
-Make a Supabase account, create a project and run these 3 separate sql queries
-```bash
-SELECT slug, name, submissions FROM forms;
 
-#and then
+1. **Create Supabase project**: [supabase.com/dashboard](https://supabase.com/dashboard) → **New Project** (wait ~2min)
 
+2. **Get API Keys**: Settings → **API** → Copy these 3:
+NEXT_PUBLIC_SUPABASE_URL=https://[project-id].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+text
+
+3. **Run SQL** (Dashboard → **SQL Editor**, in order):
+
+```sql
+-- 1. CREATE TABLE FIRST
+CREATE TABLE forms (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  form_url TEXT NOT NULL,
+  clicks INTEGER DEFAULT 0,
+  submissions INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. ENABLE RLS (security)
+ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
+
+-- 3. Click tracking function
 -- Function to increment clicks and return form URL
 CREATE OR REPLACE FUNCTION increment_clicks_and_get_url(p_slug TEXT)
 RETURNS TEXT AS $$
@@ -64,23 +83,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 4.
+SELECT slug, name, submissions FROM forms; 
 
-# and then
-
-CREATE TABLE forms (
-  slug TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  form_url TEXT NOT NULL,
-  clicks INTEGER DEFAULT 0,
-  submissions INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-
-# then clone from github and do:
-cp .env.example .env.local  # Add Supabase credentials
+bash
+git clone https://github.com/haadaulia/survey-click-counter.git
+cd survey-click-counter
+cp .env.example .env.local
+# Paste your 3 keys into .env.local
 npm install
 npm run dev
+Open localhost:3000 → Live clicks work instantly!
 
 💼 Production Challenges Solved
 TypeScript strict mode - Next.js 16 App Router compatibility
@@ -92,11 +105,16 @@ Race condition prevention - Atomic Supabase updates
 Vercel deployment - Env vars, Turbopack, serverless optimization
 
 ✨ Recent Updates
-text
 v2.0 - Production-ready dashboard
-├── Excel parser v2 (handles ALL Microsoft Forms exports)
-├── Smart form detection (filename matching)  
-├── Conversion rate analytics
-├── Bulk upload feedback
-└── Error boundaries everywhere
-Built for STEM Muslims Society @ Imperial College London
+
+Excel parser v2 (handles ALL Microsoft Forms exports)
+
+Smart form detection (filename matching)
+
+Conversion rate analytics
+
+Bulk upload feedback
+
+Error boundaries everywhere
+
+Built for STEM Muslims Society @ Imperial College London ✨
