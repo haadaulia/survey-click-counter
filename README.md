@@ -57,8 +57,7 @@ CREATE TABLE forms (
 -- 2. ENABLE RLS (security)
 ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
 
--- 3. Click tracking function
--- Function to increment clicks and return form URL
+-- 3. Function to increment clicks and return form URL
 CREATE OR REPLACE FUNCTION increment_clicks_and_get_url(p_slug TEXT)
 RETURNS TEXT AS $$
 DECLARE
@@ -73,7 +72,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to increment submissions
+-- 4. Function to increment submissions
 CREATE OR REPLACE FUNCTION increment_submissions(p_slug TEXT)
 RETURNS VOID AS $$
 BEGIN
@@ -83,7 +82,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 4.
+-- 5.
 SELECT slug, name, submissions FROM forms; 
 
 bash
