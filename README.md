@@ -108,6 +108,5 @@ npm run dev
 ✅ Bulk upload feedback
 🛡️ Error boundaries everywhere
 
-text
 
 **Built for [STEM Muslims Society @ Imperial College London](https://www.imperial.ac.uk/) ✨**
