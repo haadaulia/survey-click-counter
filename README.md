@@ -53,10 +53,10 @@ clicks INTEGER DEFAULT 0,
 submissions INTEGER DEFAULT 0,
 created_at TIMESTAMP DEFAULT NOW()
 );
-sql
+
 -- 2. ENABLE RLS (security)
 ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
-sql
+
 -- 3. CLICK TRACKING FUNCTION
 CREATE OR REPLACE FUNCTION increment_clicks_and_get_url(p_slug TEXT)
 RETURNS TEXT AS $$
@@ -67,7 +67,7 @@ BEGIN
   RETURN v_form_url;
 END;
 $$ LANGUAGE plpgsql;
-sql
+
 -- 4. SUBMISSION TRACKING FUNCTION
 CREATE OR REPLACE FUNCTION increment_submissions(p_slug TEXT)
 RETURNS VOID AS $$
@@ -75,9 +75,9 @@ BEGIN
   UPDATE forms SET submissions = submissions + 1 WHERE slug = p_slug;
 END;
 $$ LANGUAGE plpgsql;
-sql
 
-bash
+
+
 git clone https://github.com/haadaulia/survey-click-counter.git
 cd survey-click-counter
 cp .env.example .env.local
